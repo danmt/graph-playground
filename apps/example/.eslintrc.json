@@ -13,7 +13,7 @@
           "error",
           {
             "type": "attribute",
-            "prefix": "ngCytoscape",
+            "prefix": "cy",
             "style": "camelCase"
           }
         ],
@@ -21,7 +21,7 @@
           "error",
           {
             "type": "element",
-            "prefix": "ng-cytoscape",
+            "prefix": "cy",
             "style": "kebab-case"
           }
         ]
