@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
 import {
   AfterViewInit,
-  Component, ElementRef,
+  Component,
+  ElementRef,
   inject,
-  Injectable, ViewChild
+  Injectable,
+  ViewChild
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
@@ -12,14 +14,9 @@ import {
   provideComponentStore
 } from '@ngrx/component-store';
 import { EdgeDefinition, NodeDataDefinition, NodeDefinition } from 'cytoscape';
-import {
-  EMPTY, firstValueFrom,
-  switchMap, tap
-} from 'rxjs';
+import { EMPTY, firstValueFrom, switchMap, tap } from 'rxjs';
 import { v4 as uuid } from 'uuid';
-import {
-  createGraph, Drawer
-} from './drawer';
+import { createGraph, Drawer } from './drawer';
 
 type Direction = 'vertical' | 'horizontal';
 
@@ -47,7 +44,9 @@ export class DrawerStore
   implements OnStoreInit
 {
   readonly direction$ = this.select(({ direction }) => direction);
+
   readonly drawMode$ = this.select(({ drawMode }) => drawMode);
+
   readonly graph$ = this.select(
     this.select(({ elementRef }) => elementRef),
     this.select(({ nodes }) => nodes),
@@ -141,18 +140,16 @@ export class DrawerStore
 
   ngrxOnStoreInit() {
     this._handleDrawModeChange(
-      this.select(
-        this.drawer$,
-        this.drawMode$,
-        (drawer, drawMode) => ({ drawer, drawMode })
-      )
+      this.select(this.drawer$, this.drawMode$, (drawer, drawMode) => ({
+        drawer,
+        drawMode,
+      }))
     );
     this._handleDirectionChange(
-      this.select(
-        this.drawer$,
-        this.direction$,
-        (drawer, direction) => ({ drawer, direction })
-      )
+      this.select(this.drawer$, this.direction$, (drawer, direction) => ({
+        drawer,
+        direction,
+      }))
     );
   }
 
@@ -169,6 +166,22 @@ export class DrawerStore
 
     if (drawer !== null) {
       drawer.addNode(nodeData);
+    }
+  }
+
+  async removeNodeFromGraph(id: string) {
+    const drawer = await firstValueFrom(this.drawer$);
+
+    if (drawer !== null) {
+      drawer.removeNodeFromGraph(id);
+    }
+  }
+
+  async removeEdgeFromGraph(id: string) {
+    const drawer = await firstValueFrom(this.drawer$);
+
+    if (drawer !== null) {
+      drawer.removeEdgeFromGraph(id);
     }
   }
 }
@@ -214,10 +227,7 @@ export class DrawerStore
         <button (click)="onOrganize()">Organize</button>
         <button (click)="onAddNode()">Add Node</button>
       </div>
-      <div
-        id="cy"
-        #drawerElement
-      ></div>
+      <div id="cy" #drawerElement></div>
     </div>
   `,
   styles: [
@@ -248,11 +258,12 @@ export class AppComponent implements AfterViewInit {
   readonly drawMode$ = this._drawerStore.drawMode$;
   readonly direction$ = this._drawerStore.direction$;
 
-  @ViewChild('drawerElement') drawerElementRef: ElementRef<HTMLElement> | null = null;
+  @ViewChild('drawerElement') drawerElementRef: ElementRef<HTMLElement> | null =
+    null;
 
   ngAfterViewInit() {
     if (this.drawerElementRef !== null) {
-      this._drawerStore.setElementRef(this.drawerElementRef)
+      this._drawerStore.setElementRef(this.drawerElementRef);
     }
   }
 
