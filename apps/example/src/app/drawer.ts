@@ -121,7 +121,7 @@ export type DrawerEvent =
   | AddNodeSuccessEvent
   | AddEdgeEvent
   | AddEdgeSuccessEvent
-  | AddEdgePreviewEvent 
+  | AddEdgePreviewEvent
   | RemoveEdgePreviewEvent
   | AddNodeToEdgeEvent
   | AddNodeToEdgeSuccessEvent
@@ -315,7 +315,7 @@ export class Drawer {
       const node = ev.target;
       const nodeData = node.data();
 
-      if (nodeData.emitChanges) {
+      if (nodeData.emitCreateEvent) {
         this._event.next({
           type: 'AddNodeSuccess',
           payload: {
@@ -332,7 +332,7 @@ export class Drawer {
       const node = ev.target;
       const nodeData = node.data();
 
-      if (nodeData.emitChanges) {
+      if (nodeData.emitDeleteEvent) {
         this._event.next({
           type: 'DeleteNodeSuccess',
           payload: nodeData.id,
@@ -341,8 +341,12 @@ export class Drawer {
     });
 
     this._graph.on('ehpreviewon', (_, ...extraParams) => {
-      const source = [...(extraParams as unknown[])][0] as cytoscape.NodeSingular;
-      const target = [...(extraParams as unknown[])][1] as cytoscape.NodeSingular;
+      const source = [
+        ...(extraParams as unknown[]),
+      ][0] as cytoscape.NodeSingular;
+      const target = [
+        ...(extraParams as unknown[]),
+      ][1] as cytoscape.NodeSingular;
 
       this._event.next({
         type: 'AddEdgePreview',
@@ -355,8 +359,12 @@ export class Drawer {
     });
 
     this._graph.on('ehpreviewoff', (_, ...extraParams) => {
-      const source = [...(extraParams as unknown[])][0] as cytoscape.NodeSingular;
-      const target = [...(extraParams as unknown[])][1] as cytoscape.NodeSingular;
+      const source = [
+        ...(extraParams as unknown[]),
+      ][0] as cytoscape.NodeSingular;
+      const target = [
+        ...(extraParams as unknown[]),
+      ][1] as cytoscape.NodeSingular;
 
       this._event.next({
         type: 'RemoveEdgePreview',
@@ -390,7 +398,7 @@ export class Drawer {
       const edge = ev.target;
       const edgeData = edge.data();
 
-      if (edgeData.emitChanges && !edgeData.isPreview) {
+      if (edgeData.emitCreateEvent && !edgeData.isPreview) {
         this._event.next({
           type: 'AddEdgeSuccess',
           payload: {
@@ -405,8 +413,8 @@ export class Drawer {
     this._graph.on('remove', 'edge', (ev) => {
       const edge = ev.target;
       const edgeData = edge.data();
-      
-      if (edgeData.emitChanges && !edgeData.isPreview) {
+
+      if (edgeData.emitDeleteEvent && !edgeData.isPreview) {
         this._event.next({
           type: 'DeleteEdgeSuccess',
           payload: edgeData.id,
@@ -439,7 +447,7 @@ export class Drawer {
           content: 'delete',
           select: (node) => {
             if (node.isNode()) {
-              this.removeNodeFromGraph(node.id());
+              this.removeNodeFromGraph(node.id(), { emitEvent: true });
             }
           },
         },
@@ -474,7 +482,7 @@ export class Drawer {
           content: 'delete',
           select: (edge) => {
             if (edge.isEdge()) {
-              this.removeEdgeFromGraph(edge.id());
+              this.removeEdgeFromGraph(edge.id(), { emitEvent: false });
             }
           },
         },
@@ -526,17 +534,33 @@ export class Drawer {
     this.setupLayout(this._rankDir);
   }
 
-  addNode(data: cytoscape.NodeDataDefinition) {
-    this._event.next({
-      type: 'AddNode',
-      payload: {
-        id: data.id ?? '',
-        kind: data['kind'],
-        label: data['label'],
-        image: data['image'],
+  addNode(
+    data: cytoscape.NodeDataDefinition,
+    options: {
+      emitEvent: boolean;
+      emitCreateEvent: boolean;
+      emitDeleteEvent: boolean;
+    }
+  ) {
+    if (options.emitEvent) {
+      this._event.next({
+        type: 'AddNode',
+        payload: {
+          id: data.id ?? '',
+          kind: data['kind'],
+          label: data['label'],
+          image: data['image'],
+        },
+      });
+    }
+    this._graph.add({
+      data: {
+        ...data,
+        emitCreateEvent: options.emitCreateEvent,
+        emitDeleteEvent: options.emitDeleteEvent,
       },
+      group: 'nodes',
     });
-    this._graph.add({ data: { ...data, emitChanges: true }, group: 'nodes', classes: 'l1' });
   }
 
   addNodeToEdge(
@@ -561,25 +585,70 @@ export class Drawer {
     });
     this._graph.remove(`edge[id = '${edgeId}']`);
     this._graph.add([
-      { data: { ...data, emitChanges: true }, group: 'nodes' },
       {
-        group: 'edges',
-        data: { source: sourceId, target: data.id, emitChanges: true },
+        data: { ...data, emitCreateEvent: true, emitDeleteEvent: true },
+        group: 'nodes',
       },
       {
         group: 'edges',
-        data: { source: data.id, target: targetId, emitChanges: true },
+        data: {
+          source: sourceId,
+          target: data.id,
+          emitCreateEvent: true,
+          emitDeleteEvent: true,
+        },
+      },
+      {
+        group: 'edges',
+        data: {
+          source: data.id,
+          target: targetId,
+          emitCreateEvent: true,
+          emitDeleteEvent: true,
+        },
       },
     ]);
   }
 
-  removeNodeFromGraph(id: string) {
-    this._event.next({ type: 'DeleteNode', payload: id });
+  removeNodeFromGraph(id: string, options: { emitEvent: boolean }) {
+    if (options.emitEvent) {
+      this._event.next({ type: 'DeleteNode', payload: id });
+    }
     this._graph.remove(`node[id = '${id}']`);
   }
 
-  removeEdgeFromGraph(id: string) {
-    this._event.next({ type: 'DeleteEdge', payload: id });
+  addEdge(
+    data: cytoscape.EdgeDataDefinition,
+    options: {
+      emitEvent: boolean;
+      emitCreateEvent: boolean;
+      emitDeleteEvent: boolean;
+    }
+  ) {
+    if (options.emitEvent) {
+      this._event.next({
+        type: 'AddEdge',
+        payload: {
+          id: data.id ?? '',
+          source: data['source'],
+          target: data['target'],
+        },
+      });
+    }
+    this._graph.add({
+      data: {
+        ...data,
+        emitCreateEvent: options.emitCreateEvent,
+        emitDeleteEvent: options.emitDeleteEvent,
+      },
+      group: 'edges',
+    });
+  }
+
+  removeEdgeFromGraph(id: string, options: { emitEvent: boolean }) {
+    if (options.emitEvent) {
+      this._event.next({ type: 'DeleteEdge', payload: id });
+    }
     this._graph.remove(`edge[id = '${id}']`);
   }
 
