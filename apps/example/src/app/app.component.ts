@@ -270,7 +270,7 @@ export class DrawerStore
         <button (click)="onOrganize()">Organize</button>
         <button (click)="onAddNode()">Add Node</button>
       </div>
-      <div id="cy" #drawerElement></div>
+      <div id="cy" class="bp-bg-bricks" #drawerElement></div>
     </div>
   `,
   styles: [
@@ -401,7 +401,8 @@ export class AppComponent implements AfterViewInit {
       {
         id: uuid(),
         kind: 'faucet',
-        label: 'Canilla #50',
+        label: 'TokenProgram\nINIT ACCOUNT 1',
+        image: 'url(assets/images/initAccount1.png)'
       },
       {
         emitEvent: true,

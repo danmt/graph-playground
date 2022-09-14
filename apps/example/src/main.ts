@@ -4,6 +4,7 @@ import * as cytoscape from 'cytoscape';
 import * as cytoscapeCxtmenu from 'cytoscape-cxtmenu';
 import * as cytoscapeDagre from 'cytoscape-dagre';
 import * as cytoscapeEdgehandles from 'cytoscape-edgehandles';
+import * as cytoscapeNodeHtmlLabel from 'cytoscape-node-html-label';
 import { AppComponent } from './app/app.component';
 import { environment } from './environments/environment';
 import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
@@ -25,6 +26,7 @@ if (environment.production) {
 cytoscape.use(cytoscapeDagre);
 cytoscape.use(cytoscapeCxtmenu);
 cytoscape.use(cytoscapeEdgehandles);
+cytoscape.use(cytoscapeNodeHtmlLabel as cytoscape.Ext);
 
 bootstrapApplication(AppComponent, {
   providers: [
