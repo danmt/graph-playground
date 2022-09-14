@@ -281,7 +281,15 @@ export const createGraph = (
       nodes,
       edges,
     },
-  });
+  }).nodeHtmlLabel([{
+    query: '.l1',
+    valignBox: "top",
+    halignBox: "left",
+    tpl: function() {
+        return '<p class="bp-node-label">.</p>';
+    }
+    },
+]);;
 
 export class Drawer {
   private _layout: cytoscape.Layouts | null = null;
@@ -528,7 +536,7 @@ export class Drawer {
         image: data['image'],
       },
     });
-    this._graph.add({ data: { ...data, emitChanges: true }, group: 'nodes' });
+    this._graph.add({ data: { ...data, emitChanges: true }, group: 'nodes', classes: 'l1' });
   }
 
   addNodeToEdge(
