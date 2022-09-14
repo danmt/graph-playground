@@ -1,12 +1,15 @@
 import { inject, Injectable } from '@angular/core';
 import {
   collection,
-  doc, Firestore,
-  getDoc, limitToLast,
+  doc,
+  Firestore,
+  getDoc,
+  limitToLast,
   onSnapshot,
   orderBy,
   query,
-  startAfter, where
+  startAfter,
+  where,
 } from '@angular/fire/firestore';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 import { defer, from } from 'rxjs';

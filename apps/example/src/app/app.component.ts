@@ -13,7 +13,12 @@ import {
   OnStoreInit,
   provideComponentStore,
 } from '@ngrx/component-store';
-import { EdgeDefinition, NodeDataDefinition, NodeDefinition } from 'cytoscape';
+import {
+  EdgeDataDefinition,
+  EdgeDefinition,
+  NodeDataDefinition,
+  NodeDefinition,
+} from 'cytoscape';
 import { concatMap, EMPTY, firstValueFrom, switchMap, tap } from 'rxjs';
 import { v4 as uuid } from 'uuid';
 import { createGraph, Drawer } from './drawer';
@@ -89,12 +94,26 @@ export class DrawerStore
 
   readonly setNodes = this.updater<NodeDataDefinition[]>((state, nodes) => ({
     ...state,
-    nodes: nodes.map((node) => ({ data: node })),
+    nodes: nodes.map((node) => ({
+      data: {
+        ...node,
+        emitEvent: false,
+        emitCreateEvent: false,
+        emitDeleteEvent: true,
+      },
+    })),
   }));
 
-  readonly setEdges = this.updater<EdgeDefinition[]>((state, edges) => ({
+  readonly setEdges = this.updater<EdgeDataDefinition[]>((state, edges) => ({
     ...state,
-    edges,
+    edges: edges.map((edge) => ({
+      data: {
+        ...edge,
+        emitEvent: false,
+        emitCreateEvent: false,
+        emitDeleteEvent: true,
+      },
+    })),
   }));
 
   readonly setElementRef = this.updater<ElementRef<HTMLElement>>(
@@ -163,27 +182,49 @@ export class DrawerStore
     }
   }
 
-  async addNode(nodeData: NodeDataDefinition, emitChanges = true) {
+  async addNode(
+    nodeData: NodeDataDefinition,
+    options: {
+      emitEvent: boolean;
+      emitCreateEvent: boolean;
+      emitDeleteEvent: boolean;
+    }
+  ) {
     const drawer = await firstValueFrom(this.drawer$);
 
     if (drawer !== null) {
-      drawer.addNode(nodeData, emitChanges);
+      drawer.addNode(nodeData, options);
     }
   }
 
-  async removeNodeFromGraph(id: string, emitChanges = true) {
+  async addEdge(
+    edgeData: EdgeDataDefinition,
+    options: {
+      emitEvent: boolean;
+      emitCreateEvent: boolean;
+      emitDeleteEvent: boolean;
+    }
+  ) {
     const drawer = await firstValueFrom(this.drawer$);
 
     if (drawer !== null) {
-      drawer.removeNodeFromGraph(id, emitChanges);
+      drawer.addEdge(edgeData, options);
     }
   }
 
-  async removeEdgeFromGraph(id: string) {
+  async removeNodeFromGraph(id: string, emitEvent = true) {
     const drawer = await firstValueFrom(this.drawer$);
 
     if (drawer !== null) {
-      drawer.removeEdgeFromGraph(id);
+      drawer.removeNodeFromGraph(id, { emitEvent });
+    }
+  }
+
+  async removeEdgeFromGraph(id: string, emitEvent = true) {
+    const drawer = await firstValueFrom(this.drawer$);
+
+    if (drawer !== null) {
+      drawer.removeEdgeFromGraph(id, { emitEvent });
     }
   }
 }
@@ -275,6 +316,7 @@ export class AppComponent implements AfterViewInit {
       this._graphApiService.getGraph(this.graphId).then((graph) => {
         if (graph !== null) {
           this._drawerStore.setNodes(graph.nodes);
+          this._drawerStore.setEdges(graph.edges);
 
           this._eventApiService.onServerCreate(
             this.clientId,
@@ -283,11 +325,27 @@ export class AppComponent implements AfterViewInit {
             (event) => {
               switch (event.type) {
                 case 'AddNodeSuccess': {
-                  this._drawerStore.addNode(event.payload, false);
+                  this._drawerStore.addNode(event.payload, {
+                    emitEvent: false,
+                    emitCreateEvent: false,
+                    emitDeleteEvent: true,
+                  });
                   break;
                 }
                 case 'DeleteNodeSuccess': {
                   this._drawerStore.removeNodeFromGraph(event.payload, false);
+                  break;
+                }
+                case 'AddEdgeSuccess': {
+                  this._drawerStore.addEdge(event.payload, {
+                    emitEvent: false,
+                    emitCreateEvent: false,
+                    emitDeleteEvent: true,
+                  });
+                  break;
+                }
+                case 'DeleteEdgeSuccess': {
+                  this._drawerStore.removeEdgeFromGraph(event.payload, false);
                   break;
                 }
               }
@@ -345,6 +403,11 @@ export class AppComponent implements AfterViewInit {
         kind: 'faucet',
         label: 'Canilla #50',
       },
+      {
+        emitEvent: true,
+        emitCreateEvent: true,
+        emitDeleteEvent: true,
+      }
     );
   }
 }

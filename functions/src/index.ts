@@ -6,8 +6,6 @@ const pubsub = new PubSub();
 admin.initializeApp();
 const firestore = admin.firestore();
 
-admin.firestore.FieldValue.serverTimestamp;
-
 export const publishEvent = functions.https.onCall(async (data, context) => {
   const eventCollectionRef = firestore.collection('events');
 
@@ -55,7 +53,7 @@ export const persistEvent = functions.pubsub
       type: messageBody.type,
       graphId: messageBody.graphId,
       clientId: messageBody.clientId,
-      createdAt: admin.firestore.FieldValue.serverTimestamp()
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     return true;
@@ -94,6 +92,22 @@ export const mutateGraphState = functions.pubsub
           });
           break;
         }
+        case 'AddEdgeSuccess': {
+          transaction.update(graphRef, {
+            edges: [...graphData['edges'], messageBody.payload],
+            lastEventId: messageBody.id,
+          });
+          break;
+        }
+        case 'DeleteEdgeSuccess': {
+            transaction.update(graphRef, {
+              edges: graphData['edges'].filter((edge: { id: string }) => {
+                return edge.id !== messageBody.payload;
+              }),
+              lastEventId: messageBody.id,
+            });
+            break;
+          }
         default:
           return false;
       }
