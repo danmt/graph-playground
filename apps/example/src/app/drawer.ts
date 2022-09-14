@@ -15,6 +15,7 @@ export interface AddNodeEvent {
     id: string;
     kind: string;
     label: string;
+    image: string;
   };
 }
 
@@ -24,6 +25,7 @@ export interface AddNodeSuccessEvent {
     id: string;
     kind: string;
     label: string;
+    image: string;
   };
 }
 
@@ -73,6 +75,7 @@ export interface AddNodeToEdgeEvent {
       id: string;
       kind: string;
       label: string;
+      image: string;
     };
   };
 }
@@ -201,21 +204,30 @@ export const createGraph = (
     style: [
       // Style all nodes/edges
       {
-        selector: 'node[label]',
+        selector: 'node',
         style: {
-          height: 80,
-          width: 80,
-          'background-width': '64px',
-          'background-height': '64px',
-          'border-color': '#000',
-          'border-width': 3,
-          'border-opacity': 0.5,
+          width: 280,
+          height: 85,
+          'background-width': '280px',
+          'background-height': '85px',
+          'border-color': '#565656',
+          'border-width': 0,
+          'border-opacity': 0,
+          'background-opacity': 0,
+          "font-size": "12px",
           shape: 'round-rectangle',
-          'background-color': '#fff',
-          'text-valign': 'bottom',
+          'text-valign': 'center',
           'text-halign': 'center',
-          'text-margin-y': 8,
+          'text-max-width': '150px',
+          'text-wrap': "wrap",
+          'text-margin-x': 10,
+          'text-margin-y': -5,
+          'text-justification': 'left',
+          'line-height': 1.3,
           content: 'data(label)',
+          'background-position-x': '0',
+          'background-image': 'data(image)',
+          'color': 'white',
         },
       },
       {
@@ -224,63 +236,9 @@ export const createGraph = (
           'curve-style': 'bezier',
           width: 6,
           'target-arrow-shape': 'triangle',
-          'line-color': '#3492eb',
-          'target-arrow-color': '#3492eb',
-        },
-      },
-      // Give each node kind a background image
-      {
-        selector: 'node[kind = "faucet"]',
-        style: {
-          'background-image': 'assets/faucet.svg',
-        },
-      },
-      {
-        selector: 'node[kind = "filter"]',
-        style: {
-          'background-image': 'assets/filter.svg',
-        },
-      },
-      {
-        selector: 'node[kind = "gravity"]',
-        style: {
-          'background-image': 'assets/gravity.svg',
-        },
-      },
-      {
-        selector: 'node[kind = "plant"]',
-        style: {
-          'background-image': 'assets/plant.svg',
-        },
-      },
-      {
-        selector: 'node[kind = "pump"]',
-        style: {
-          'background-image': 'assets/pump.svg',
-        },
-      },
-      {
-        selector: 'node[kind = "splitter"]',
-        style: {
-          'background-image': 'assets/splitter.svg',
-        },
-      },
-      {
-        selector: 'node[kind = "valve"]',
-        style: {
-          'background-image': 'assets/valve.svg',
-        },
-      },
-      {
-        selector: 'node[kind = "water-tank"]',
-        style: {
-          'background-image': 'assets/water-tank.svg',
-        },
-      },
-      {
-        selector: 'node[kind = "water-well"]',
-        style: {
-          'background-image': 'assets/water-well.svg',
+          'line-color': '#5E6469',
+          'target-arrow-color': '#5E6469',
+          'source-endpoint': 'inside-to-node',
         },
       },
       // Style the edge handles extension
@@ -356,6 +314,7 @@ export class Drawer {
             id: nodeData.id,
             kind: nodeData.kind,
             label: nodeData.label,
+            image: nodeData.image
           },
         });
       }
@@ -496,6 +455,7 @@ export class Drawer {
                   id: uuid(),
                   kind: 'faucet',
                   label: 'Canilla #2',
+                  image: '',
                   emitChanges: true,
                 }
               );
@@ -565,6 +525,7 @@ export class Drawer {
         id: data.id ?? '',
         kind: data['kind'],
         label: data['label'],
+        image: data['image'],
       },
     });
     this._graph.add({ data: { ...data, emitChanges: true }, group: 'nodes' });
@@ -586,6 +547,7 @@ export class Drawer {
           id: data.id ?? '',
           kind: data['kind'],
           label: data['label'],
+          image: data['image'],
         },
       },
     });
