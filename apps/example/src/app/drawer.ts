@@ -350,6 +350,8 @@ export class Drawer {
       const nodeData = node.data();
 
       if (nodeData.emitChanges) {
+        node.data({ emitChanges: false });
+
         this._event.next({
           type: 'AddNodeSuccess',
           payload: {
@@ -558,16 +560,18 @@ export class Drawer {
     this.setupLayout(this._rankDir);
   }
 
-  addNode(data: cytoscape.NodeDataDefinition) {
-    this._event.next({
-      type: 'AddNode',
-      payload: {
-        id: data.id ?? '',
-        kind: data['kind'],
-        label: data['label'],
-      },
-    });
-    this._graph.add({ data: { ...data, emitChanges: true }, group: 'nodes' });
+  addNode(data: cytoscape.NodeDataDefinition, emitChanges = true) {
+    if (emitChanges) {
+      this._event.next({
+        type: 'AddNode',
+        payload: {
+          id: data.id ?? '',
+          kind: data['kind'],
+          label: data['label'],
+        },
+      });
+    }
+    this._graph.add({ data: { ...data, emitChanges }, group: 'nodes' });
   }
 
   addNodeToEdge(
@@ -603,8 +607,12 @@ export class Drawer {
     ]);
   }
 
-  removeNodeFromGraph(id: string) {
-    this._event.next({ type: 'DeleteNode', payload: id });
+  removeNodeFromGraph(id: string, emitChanges = true) {
+    if (emitChanges) {
+      this._event.next({ type: 'DeleteNode', payload: id });
+    }
+    const node = this._graph.nodes(`node[id = '${id}']`).first();
+    node.data({ emitChanges });
     this._graph.remove(`node[id = '${id}']`);
   }
 

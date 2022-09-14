@@ -5,18 +5,20 @@ import {
   ElementRef,
   inject,
   Injectable,
-  ViewChild
+  ViewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
   ComponentStore,
   OnStoreInit,
-  provideComponentStore
+  provideComponentStore,
 } from '@ngrx/component-store';
 import { EdgeDefinition, NodeDataDefinition, NodeDefinition } from 'cytoscape';
-import { EMPTY, firstValueFrom, switchMap, tap } from 'rxjs';
+import { concatMap, EMPTY, firstValueFrom, switchMap, tap } from 'rxjs';
 import { v4 as uuid } from 'uuid';
 import { createGraph, Drawer } from './drawer';
+import { EventApiService } from './event-api.service';
+import { GraphApiService } from './graph-api.service';
 
 type Direction = 'vertical' | 'horizontal';
 
@@ -85,9 +87,9 @@ export class DrawerStore
     (event) => event
   );
 
-  readonly setNodes = this.updater<NodeDefinition[]>((state, nodes) => ({
+  readonly setNodes = this.updater<NodeDataDefinition[]>((state, nodes) => ({
     ...state,
-    nodes,
+    nodes: nodes.map((node) => ({ data: node })),
   }));
 
   readonly setEdges = this.updater<EdgeDefinition[]>((state, edges) => ({
@@ -161,19 +163,19 @@ export class DrawerStore
     }
   }
 
-  async addNode(nodeData: NodeDataDefinition) {
+  async addNode(nodeData: NodeDataDefinition, emitChanges = true) {
     const drawer = await firstValueFrom(this.drawer$);
 
     if (drawer !== null) {
-      drawer.addNode(nodeData);
+      drawer.addNode(nodeData, emitChanges);
     }
   }
 
-  async removeNodeFromGraph(id: string) {
+  async removeNodeFromGraph(id: string, emitChanges = true) {
     const drawer = await firstValueFrom(this.drawer$);
 
     if (drawer !== null) {
-      drawer.removeNodeFromGraph(id);
+      drawer.removeNodeFromGraph(id, emitChanges);
     }
   }
 
@@ -254,9 +256,14 @@ export class DrawerStore
 })
 export class AppComponent implements AfterViewInit {
   private readonly _drawerStore = inject(DrawerStore);
+  private readonly _eventApiService = inject(EventApiService);
+  private readonly _graphApiService = inject(GraphApiService);
 
   readonly drawMode$ = this._drawerStore.drawMode$;
   readonly direction$ = this._drawerStore.direction$;
+
+  readonly clientId = uuid();
+  readonly graphId = '5l7hFOgMPmJ1SBcZChwe';
 
   @ViewChild('drawerElement') drawerElementRef: ElementRef<HTMLElement> | null =
     null;
@@ -264,6 +271,58 @@ export class AppComponent implements AfterViewInit {
   ngAfterViewInit() {
     if (this.drawerElementRef !== null) {
       this._drawerStore.setElementRef(this.drawerElementRef);
+
+      this._graphApiService.getGraph(this.graphId).then((graph) => {
+        if (graph !== null) {
+          this._drawerStore.setNodes(graph.nodes);
+
+          this._eventApiService.onServerCreate(
+            this.clientId,
+            this.graphId,
+            graph.lastEventId,
+            (event) => {
+              switch (event.type) {
+                case 'AddNodeSuccess': {
+                  this._drawerStore.addNode(event.payload, false);
+                  break;
+                }
+                case 'DeleteNodeSuccess': {
+                  this._drawerStore.removeNodeFromGraph(event.payload, false);
+                  break;
+                }
+              }
+            }
+          );
+        }
+      });
+
+      this._drawerStore.event$
+        .pipe(
+          concatMap((event) => {
+            switch (event.type) {
+              // Ignoring these events for now
+              case 'AddNode':
+              case 'AddEdge':
+              case 'AddEdgePreview':
+              case 'AddNodeToEdge':
+              case 'DeleteEdge':
+              case 'DeleteNode':
+              case 'Init':
+              case 'ViewNode':
+              case 'UpdateNode':
+              case 'RemoveEdgePreview':
+                return EMPTY;
+              default: {
+                return this._eventApiService.emit(
+                  this.clientId,
+                  this.graphId,
+                  event
+                );
+              }
+            }
+          })
+        )
+        .subscribe();
     }
   }
 
@@ -280,10 +339,12 @@ export class AppComponent implements AfterViewInit {
   }
 
   onAddNode() {
-    this._drawerStore.addNode({
-      id: uuid(),
-      kind: 'faucet',
-      label: 'Canilla #50',
-    });
+    this._drawerStore.addNode(
+      {
+        id: uuid(),
+        kind: 'faucet',
+        label: 'Canilla #50',
+      },
+    );
   }
 }
