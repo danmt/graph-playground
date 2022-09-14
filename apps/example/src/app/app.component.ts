@@ -401,8 +401,8 @@ export class AppComponent implements AfterViewInit {
       {
         id: uuid(),
         kind: 'faucet',
-        label: 'TokenProgram\nINIT ACCOUNT 1',
-        image: 'url(assets/images/initAccount1.png)'
+        label: '',
+        image: 'url(assets/images/node.png)'
       },
       {
         emitEvent: true,

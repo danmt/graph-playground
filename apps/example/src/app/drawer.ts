@@ -204,7 +204,7 @@ export const createGraph = (
     style: [
       // Style all nodes/edges
       {
-        selector: 'node',
+        selector: 'node[label]',
         style: {
           width: 280,
           height: 85,
@@ -283,12 +283,23 @@ export const createGraph = (
     },
   }).nodeHtmlLabel([{
     query: '.l1',
-    valignBox: "top",
-    halignBox: "left",
     tpl: function() {
-        return '<p class="bp-node-label">.</p>';
+        return `
+        <div class="bd-custom-node">
+          <div class="bd-custom-node-image" 
+            style="
+                  --bd-bg-image: url('assets/images/create-nonce-account.png'); 
+                  --bd-bg-width: 55px;
+                  "
+          > </div>
+          <div class="bd-custom-node-text">
+            <p>Token Program</p>
+            <h1>INIT ACCOUNT</h1>
+          </div>
+        </div>
+        `;
+      }
     }
-    },
 ]);;
 
 export class Drawer {
@@ -560,6 +571,7 @@ export class Drawer {
         emitDeleteEvent: options.emitDeleteEvent,
       },
       group: 'nodes',
+      classes: 'l1'
     });
   }
 
