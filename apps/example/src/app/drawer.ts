@@ -9,16 +9,6 @@ export interface InitEvent {
   type: 'Init';
 }
 
-export interface AddNodeEvent {
-  type: 'AddNode';
-  payload: {
-    id: string;
-    kind: string;
-    label: string;
-    image: string;
-  };
-}
-
 export interface AddNodeSuccessEvent {
   type: 'AddNodeSuccess';
   payload: {
@@ -26,33 +16,6 @@ export interface AddNodeSuccessEvent {
     kind: string;
     label: string;
     image: string;
-  };
-}
-
-export interface AddEdgePreviewEvent {
-  type: 'AddEdgePreview';
-  payload: {
-    id: string;
-    source: string;
-    target: string;
-  };
-}
-
-export interface RemoveEdgePreviewEvent {
-  type: 'RemoveEdgePreview';
-  payload: {
-    id: string;
-    source: string;
-    target: string;
-  };
-}
-
-export interface AddEdgeEvent {
-  type: 'AddEdge';
-  payload: {
-    id: string;
-    source: string;
-    target: string;
   };
 }
 
@@ -65,8 +28,8 @@ export interface AddEdgeSuccessEvent {
   };
 }
 
-export interface AddNodeToEdgeEvent {
-  type: 'AddNodeToEdge';
+export interface AddNodeToEdgeSuccessEvent {
+  type: 'AddNodeToEdgeSuccess';
   payload: {
     source: string;
     target: string;
@@ -78,11 +41,6 @@ export interface AddNodeToEdgeEvent {
       image: string;
     };
   };
-}
-
-export interface AddNodeToEdgeSuccessEvent {
-  type: 'AddNodeToEdgeSuccess';
-  payload: string;
 }
 
 export interface UpdateNodeEvent {
@@ -117,13 +75,8 @@ export interface DeleteEdgeSuccessEvent {
 
 export type DrawerEvent =
   | InitEvent
-  | AddNodeEvent
   | AddNodeSuccessEvent
-  | AddEdgeEvent
   | AddEdgeSuccessEvent
-  | AddEdgePreviewEvent
-  | RemoveEdgePreviewEvent
-  | AddNodeToEdgeEvent
   | AddNodeToEdgeSuccessEvent
   | UpdateNodeEvent
   | DeleteNodeEvent
@@ -136,20 +89,10 @@ export const isInitEvent = (event: DrawerEvent): event is InitEvent => {
   return event.type === 'Init';
 };
 
-export const isAddNodeEvent = (event: DrawerEvent): event is AddNodeEvent => {
-  return event.type === 'AddNode';
-};
-
 export const isAddNodeSuccessEvent = (
   event: DrawerEvent
 ): event is AddNodeSuccessEvent => {
   return event.type === 'AddNodeSuccess';
-};
-
-export const isAddNodeToEdgeEvent = (
-  event: DrawerEvent
-): event is AddNodeToEdgeEvent => {
-  return event.type === 'AddNodeToEdge';
 };
 
 export const isAddNodeToEdgeSuccessEvent = (
@@ -204,7 +147,7 @@ export const createGraph = (
     style: [
       // Style all nodes/edges
       {
-        selector: 'node',
+        selector: 'node[label]',
         style: {
           width: 280,
           height: 85,
@@ -214,12 +157,12 @@ export const createGraph = (
           'border-width': 0,
           'border-opacity': 0,
           'background-opacity': 0,
-          "font-size": "12px",
+          'font-size': '12px',
           shape: 'round-rectangle',
           'text-valign': 'center',
           'text-halign': 'center',
           'text-max-width': '150px',
-          'text-wrap': "wrap",
+          'text-wrap': 'wrap',
           'text-margin-x': 10,
           'text-margin-y': -5,
           'text-justification': 'left',
@@ -227,7 +170,7 @@ export const createGraph = (
           content: 'data(label)',
           'background-position-x': '0',
           'background-image': 'data(image)',
-          'color': 'white',
+          color: 'white',
         },
       },
       {
@@ -281,15 +224,16 @@ export const createGraph = (
       nodes,
       edges,
     },
-  }).nodeHtmlLabel([{
-    query: '.l1',
-    valignBox: "top",
-    halignBox: "left",
-    tpl: function() {
+  }).nodeHtmlLabel([
+    {
+      query: '.l1',
+      valignBox: 'top',
+      halignBox: 'left',
+      tpl: function () {
         return '<p class="bp-node-label">.</p>';
-    }
+      },
     },
-]);;
+  ]);
 
 export class Drawer {
   private _layout: cytoscape.Layouts | null = null;
@@ -311,115 +255,136 @@ export class Drawer {
     this.setupEdgeContextMenu();
     this.setupEdgeHandles();
     // Listen to events
-    this._graph.on('add', 'node', (ev) => {
-      const node = ev.target;
-      const nodeData = node.data();
 
-      if (nodeData.emitCreateEvent) {
-        this._event.next({
-          type: 'AddNodeSuccess',
-          payload: {
-            id: nodeData.id,
-            kind: nodeData.kind,
-            label: nodeData.label,
-            image: nodeData.image
-          },
-        });
-      }
-    });
-
-    this._graph.on('remove', 'node', (ev) => {
-      const node = ev.target;
-      const nodeData = node.data();
-
-      if (nodeData.emitDeleteEvent) {
-        this._event.next({
-          type: 'DeleteNodeSuccess',
-          payload: nodeData.id,
-        });
-      }
-    });
-
-    this._graph.on('ehpreviewon', (_, ...extraParams) => {
-      const source = [
-        ...(extraParams as unknown[]),
-      ][0] as cytoscape.NodeSingular;
-      const target = [
-        ...(extraParams as unknown[]),
-      ][1] as cytoscape.NodeSingular;
+    this._graph.on('local.node-added', (ev, ...extraParams) => {
+      const node = extraParams[0] as cytoscape.NodeDataDefinition;
 
       this._event.next({
-        type: 'AddEdgePreview',
+        type: 'AddNodeSuccess',
         payload: {
-          id: `${source.id()}/${target.id()}`,
-          source: source.id(),
-          target: target.id(),
+          id: node.id ?? '',
+          kind: node['kind'],
+          label: node['label'],
+          image: node['image'],
         },
       });
     });
 
-    this._graph.on('ehpreviewoff', (_, ...extraParams) => {
-      const source = [
-        ...(extraParams as unknown[]),
-      ][0] as cytoscape.NodeSingular;
-      const target = [
-        ...(extraParams as unknown[]),
-      ][1] as cytoscape.NodeSingular;
+    this._graph.on('server.node-added', (ev, ...extraParams) => {
+      const node = extraParams[0] as cytoscape.NodeDataDefinition;
+
+      this._graph.add({ data: node, group: 'nodes' });
+    });
+
+    this._graph.on('local.node-deleted', (_, ...extraParams) => {
+      const nodeId = extraParams[0] as string;
 
       this._event.next({
-        type: 'RemoveEdgePreview',
-        payload: {
-          id: `${source.id()}/${target.id()}`,
-          source: source.id(),
-          target: target.id(),
-        },
+        type: 'DeleteNodeSuccess',
+        payload: nodeId,
       });
+    });
+
+    this._graph.on('server.node-deleted', (_, ...extraParams) => {
+      const nodeId = extraParams[0] as string;
+
+      this._graph.remove(`node[id = '${nodeId}']`);
     });
 
     this._graph.on('ehcomplete', (_, ...extraParams) => {
       const edge = [...(extraParams as unknown[])][2] as cytoscape.EdgeSingular;
       const edgeData = edge.data();
 
-      edge.data({ isPreview: false });
-
-      if (edgeData.emitChanges) {
-        this._event.next({
-          type: 'AddEdgeSuccess',
-          payload: {
-            id: edgeData.id,
-            source: edgeData.source,
-            target: edgeData.target,
-          },
-        });
-      }
+      this._graph.emit('local.edge-added', [edgeData]);
     });
 
-    this._graph.on('add', 'edge', (ev) => {
-      const edge = ev.target;
-      const edgeData = edge.data();
+    this._graph.on('local.edge-added', (_, ...extraParams) => {
+      const edge = extraParams[0] as cytoscape.EdgeDataDefinition;
 
-      if (edgeData.emitCreateEvent && !edgeData.isPreview) {
-        this._event.next({
-          type: 'AddEdgeSuccess',
-          payload: {
-            id: edgeData.id,
-            source: edgeData.source,
-            target: edgeData.target,
-          },
-        });
-      }
+      this._event.next({
+        type: 'AddEdgeSuccess',
+        payload: {
+          id: edge.id ?? '',
+          source: edge['source'],
+          target: edge['target'],
+        },
+      });
     });
 
-    this._graph.on('remove', 'edge', (ev) => {
-      const edge = ev.target;
-      const edgeData = edge.data();
+    this._graph.on('server.edge-added', (ev, ...extraParams) => {
+      const edge = extraParams[0] as cytoscape.EdgeDataDefinition;
 
-      if (edgeData.emitDeleteEvent && !edgeData.isPreview) {
-        this._event.next({
-          type: 'DeleteEdgeSuccess',
-          payload: edgeData.id,
-        });
-      }
+      this._graph.add({ data: edge, group: 'edges' });
+    });
+
+    this._graph.on('local.edge-deleted', (_, ...extraParams) => {
+      const edgeId = extraParams[0] as string;
+
+      this._event.next({
+        type: 'DeleteEdgeSuccess',
+        payload: edgeId,
+      });
+    });
+
+    this._graph.on('server.edge-deleted', (_, ...extraParams) => {
+      const edgeId = extraParams[0] as string;
+
+      this._graph.remove(`edge[id = '${edgeId}']`);
+    });
+
+    this._graph.on('local.node-added-to-edge', (_, ...extraParams) => {
+      const node = [
+        ...(extraParams as unknown[]),
+      ][0] as cytoscape.NodeDataDefinition;
+      const source = [...(extraParams as unknown[])][1] as string;
+      const target = [...(extraParams as unknown[])][2] as string;
+      const edgeId = [...(extraParams as unknown[])][3] as string;
+
+      this._event.next({
+        type: 'AddNodeToEdgeSuccess',
+        payload: {
+          source,
+          target,
+          edgeId,
+          node: {
+            id: node.id ?? '',
+            kind: node['kind'],
+            label: node['label'],
+            image: node['image'],
+          },
+        },
+      });
+    });
+
+    this._graph.on('server.node-added-to-edge', (ev, ...extraParams) => {
+      const node = [
+        ...(extraParams as unknown[]),
+      ][0] as cytoscape.NodeDataDefinition;
+      const source = [...(extraParams as unknown[])][1] as string;
+      const target = [...(extraParams as unknown[])][2] as string;
+      const edgeId = [...(extraParams as unknown[])][3] as string;
+
+      this._graph.remove(`edge[id = '${edgeId}']`);
+      this._graph.add([
+        {
+          data: node,
+          group: 'nodes',
+        },
+        {
+          group: 'edges',
+          data: {
+            source: source,
+            target: node.id,
+          },
+        },
+        {
+          group: 'edges',
+          data: {
+            source: node.id,
+            target: target,
+          },
+        },
+      ]);
     });
   }
 
@@ -447,7 +412,7 @@ export class Drawer {
           content: 'delete',
           select: (node) => {
             if (node.isNode()) {
-              this.removeNodeFromGraph(node.id(), { emitEvent: true });
+              this.removeNode(node.id());
             }
           },
         },
@@ -464,16 +429,15 @@ export class Drawer {
           select: (edge) => {
             if (edge.isEdge()) {
               this.addNodeToEdge(
-                edge.data().source,
-                edge.data().target,
-                edge.id(),
                 {
                   id: uuid(),
                   kind: 'faucet',
-                  label: 'Canilla #2',
-                  image: '',
-                  emitChanges: true,
-                }
+                  label: 'TokenProgram\nINIT ACCOUNT 1',
+                  image: 'url(assets/images/initAccount1.png)',
+                },
+                edge.data().source,
+                edge.data().target,
+                edge.id(),
               );
             }
           },
@@ -482,7 +446,7 @@ export class Drawer {
           content: 'delete',
           select: (edge) => {
             if (edge.isEdge()) {
-              this.removeEdgeFromGraph(edge.id(), { emitEvent: false });
+              this.removeEdge(edge.id());
             }
           },
         },
@@ -508,8 +472,6 @@ export class Drawer {
         return {
           data: {
             id: `${source.id()}/${target.id()}`,
-            emitChanges: true,
-            isPreview: true,
           },
         };
       },
@@ -534,122 +496,79 @@ export class Drawer {
     this.setupLayout(this._rankDir);
   }
 
-  addNode(
-    data: cytoscape.NodeDataDefinition,
-    options: {
-      emitEvent: boolean;
-      emitCreateEvent: boolean;
-      emitDeleteEvent: boolean;
-    }
-  ) {
-    if (options.emitEvent) {
-      this._event.next({
-        type: 'AddNode',
-        payload: {
-          id: data.id ?? '',
-          kind: data['kind'],
-          label: data['label'],
-          image: data['image'],
-        },
-      });
-    }
-    this._graph.add({
-      data: {
-        ...data,
-        emitCreateEvent: options.emitCreateEvent,
-        emitDeleteEvent: options.emitDeleteEvent,
-      },
-      group: 'nodes',
-    });
+  addNode(node: cytoscape.NodeDataDefinition) {
+    this._graph.add({ data: node, group: 'nodes' });
+    this._graph.emit('local.node-added', [node]);
   }
 
   addNodeToEdge(
-    sourceId: string,
-    targetId: string,
+    node: cytoscape.NodeDataDefinition,
+    source: string,
+    target: string,
     edgeId: string,
-    data: cytoscape.NodeDataDefinition
   ) {
-    this._event.next({
-      type: 'AddNodeToEdge',
-      payload: {
-        source: sourceId,
-        target: targetId,
-        edgeId,
-        node: {
-          id: data.id ?? '',
-          kind: data['kind'],
-          label: data['label'],
-          image: data['image'],
-        },
-      },
-    });
     this._graph.remove(`edge[id = '${edgeId}']`);
     this._graph.add([
       {
-        data: { ...data, emitCreateEvent: true, emitDeleteEvent: true },
+        data: node,
         group: 'nodes',
       },
       {
         group: 'edges',
         data: {
-          source: sourceId,
-          target: data.id,
-          emitCreateEvent: true,
-          emitDeleteEvent: true,
+          source: source,
+          target: node.id,
         },
       },
       {
         group: 'edges',
         data: {
-          source: data.id,
-          target: targetId,
-          emitCreateEvent: true,
-          emitDeleteEvent: true,
+          source: node.id,
+          target: target,
         },
       },
     ]);
+    this._graph.emit('local.node-added-to-edge', [
+      node,
+      source,
+      target,
+      edgeId,
+    ]);
   }
 
-  removeNodeFromGraph(id: string, options: { emitEvent: boolean }) {
-    if (options.emitEvent) {
-      this._event.next({ type: 'DeleteNode', payload: id });
-    }
-    this._graph.remove(`node[id = '${id}']`);
+  removeNode(nodeId: string) {
+    this._graph.remove(`node[id = '${nodeId}']`);
+    this._graph.emit('local.node-deleted', [nodeId]);
   }
 
-  addEdge(
-    data: cytoscape.EdgeDataDefinition,
-    options: {
-      emitEvent: boolean;
-      emitCreateEvent: boolean;
-      emitDeleteEvent: boolean;
-    }
-  ) {
-    if (options.emitEvent) {
-      this._event.next({
-        type: 'AddEdge',
-        payload: {
-          id: data.id ?? '',
-          source: data['source'],
-          target: data['target'],
-        },
-      });
-    }
-    this._graph.add({
-      data: {
-        ...data,
-        emitCreateEvent: options.emitCreateEvent,
-        emitDeleteEvent: options.emitDeleteEvent,
-      },
-      group: 'edges',
-    });
+  handleNodeAdded(node: cytoscape.NodeDataDefinition) {
+    this._graph.emit('server.node-added', [node]);
   }
 
-  removeEdgeFromGraph(id: string, options: { emitEvent: boolean }) {
-    if (options.emitEvent) {
-      this._event.next({ type: 'DeleteEdge', payload: id });
-    }
-    this._graph.remove(`edge[id = '${id}']`);
+  handleNodeAddedToEdge(
+    node: cytoscape.NodeDataDefinition,
+    source: string,
+    target: string,
+    edgeId: string,
+    ) {
+    this._graph.emit('server.node-added-to-edge', [node, source, target, edgeId]);
+  }
+
+  handleNodeRemoved(nodeId: string) {
+    this._graph.emit('server.node-deleted', [nodeId]);
+  }
+
+  removeEdge(edgeId: string) {
+    this._graph.remove(`edge[id = '${edgeId}']`);
+    this._graph.emit('local.edge-deleted', [edgeId]);
+  }
+
+  handleEdgeAdded(edge: cytoscape.EdgeDataDefinition) {
+    this._graph.emit('server.edge-added', [edge]);
+  }
+
+  handleEdgeRemoved(edgeId: string) {
+    this._graph.emit('server.edge-deleted', [edgeId]);
   }
 
   setDrawMode(drawMode: boolean) {
