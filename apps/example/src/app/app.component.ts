@@ -403,9 +403,9 @@ export class AppComponent implements AfterViewInit {
   onAddNode() {
     this._drawerStore.addNode({
       id: uuid(),
-      kind: 'faucet',
-      label: 'TokenProgram\nINIT ACCOUNT 1',
-      image: 'url(assets/images/initAccount1.png)',
+      kind: 'TokenProgram',
+      label: 'INIT ACCOUNT 2',
+      image: 'url(assets/images/create-nonce-account.png)'
     });
   }
 }

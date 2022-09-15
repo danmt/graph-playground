@@ -157,20 +157,19 @@ export const createGraph = (
           'border-width': 0,
           'border-opacity': 0,
           'background-opacity': 0,
-          'font-size': '12px',
+          "font-size": "12px",
           shape: 'round-rectangle',
           'text-valign': 'center',
           'text-halign': 'center',
           'text-max-width': '150px',
-          'text-wrap': 'wrap',
+          'text-wrap': "wrap",
           'text-margin-x': 10,
           'text-margin-y': -5,
           'text-justification': 'left',
           'line-height': 1.3,
-          content: 'data(label)',
           'background-position-x': '0',
-          'background-image': 'data(image)',
-          color: 'white',
+          'background-image': 'url(assets/images/node.png)',
+          'color': 'white',
         },
       },
       {
@@ -224,16 +223,26 @@ export const createGraph = (
       nodes,
       edges,
     },
-  }).nodeHtmlLabel([
-    {
-      query: '.l1',
-      valignBox: 'top',
-      halignBox: 'left',
-      tpl: function () {
-        return '<p class="bp-node-label">.</p>';
-      },
-    },
-  ]);
+  }).nodeHtmlLabel([{
+    query: '.bp-bd-node',
+    tpl: function(data: { label: string; kind: string; image:string }) {
+        return `
+        <div class="bd-custom-node">
+          <div class="bd-custom-node-image" 
+            style="
+                  --bd-bg-image: ` + data.image + `; 
+                  --bd-bg-width: 55px;
+                  "
+          > </div>
+          <div class="bd-custom-node-text">
+            <p> ` + data.kind + `</p>
+            <h1>` + data.label + `</h1>
+          </div>
+        </div>
+        `;
+      }
+    }
+]);;
 
 export class Drawer {
   private _layout: cytoscape.Layouts | null = null;
@@ -273,7 +282,7 @@ export class Drawer {
     this._graph.on('server.node-added', (ev, ...extraParams) => {
       const node = extraParams[0] as cytoscape.NodeDataDefinition;
 
-      this._graph.add({ data: node, group: 'nodes' });
+      this._addNode(node);
     });
 
     this._graph.on('local.node-deleted', (_, ...extraParams) => {
@@ -369,6 +378,7 @@ export class Drawer {
         {
           data: node,
           group: 'nodes',
+          classes: 'bp-bd-node'
         },
         {
           group: 'edges',
@@ -386,6 +396,10 @@ export class Drawer {
         },
       ]);
     });
+  }
+
+  private _addNode(node: cytoscape.NodeDataDefinition) {
+    this._graph.add({ data: node, group: 'nodes', classes: 'bp-bd-node' });
   }
 
   setupNodeContextMenu() {
@@ -497,7 +511,7 @@ export class Drawer {
   }
 
   addNode(node: cytoscape.NodeDataDefinition) {
-    this._graph.add({ data: node, group: 'nodes' });
+    this._addNode(node);
     this._graph.emit('local.node-added', [node]);
   }
 
@@ -512,6 +526,7 @@ export class Drawer {
       {
         data: node,
         group: 'nodes',
+        classes: 'bp-bd-node'
       },
       {
         group: 'edges',
