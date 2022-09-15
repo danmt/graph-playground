@@ -83,10 +83,34 @@ export const mutateGraphState = functions.pubsub
           });
           break;
         }
+        case 'AddNodeToEdgeSuccess': {
+          transaction.update(graphRef, {
+            edges: graphData['edges'].filter((edge: { id: string }) => {
+              return edge.id !== messageBody.payload.edgeId;
+            }).concat([
+              {
+                id: `${messageBody.payload.source}/${messageBody.payload.node.id}`,
+                source: messageBody.payload.source,
+                target: messageBody.payload.node.id,
+              },
+              {
+                id: `${messageBody.payload.node.id}/${messageBody.payload.target}`,
+                source: messageBody.payload.node.id,
+                target: messageBody.payload.target,
+              }
+            ]),
+            nodes: [...graphData['nodes'], messageBody.payload.node],
+            lastEventId: messageBody.id,
+          });
+          break;
+        }
         case 'DeleteNodeSuccess': {
           transaction.update(graphRef, {
             nodes: graphData['nodes'].filter((node: { id: string }) => {
               return node.id !== messageBody.payload;
+            }),
+            edges: graphData['edges'].filter((edge: { source: string, target: string }) => {
+              return edge.source !== messageBody.payload && edge.target !== messageBody.payload;
             }),
             lastEventId: messageBody.id,
           });

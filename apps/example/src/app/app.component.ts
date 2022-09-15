@@ -64,20 +64,25 @@ export class DrawerStore
       }
 
       return createGraph(elementRef.nativeElement, nodes, edges);
-    }
+    },
+    { debounce: true }
   );
 
-  readonly drawer$ = this.select(this.graph$, (graph) => {
-    if (graph === null) {
-      return null;
-    }
+  readonly drawer$ = this.select(
+    this.graph$,
+    (graph) => {
+      if (graph === null) {
+        return null;
+      }
 
-    const drawer = new Drawer(graph);
+      const drawer = new Drawer(graph);
 
-    drawer.initialize();
+      drawer.initialize();
 
-    return drawer;
-  });
+      return drawer;
+    },
+    { debounce: true }
+  );
 
   readonly event$ = this.select(
     this.drawer$.pipe(
@@ -95,24 +100,14 @@ export class DrawerStore
   readonly setNodes = this.updater<NodeDataDefinition[]>((state, nodes) => ({
     ...state,
     nodes: nodes.map((node) => ({
-      data: {
-        ...node,
-        emitEvent: false,
-        emitCreateEvent: false,
-        emitDeleteEvent: true,
-      },
+      data: node,
     })),
   }));
 
   readonly setEdges = this.updater<EdgeDataDefinition[]>((state, edges) => ({
     ...state,
     edges: edges.map((edge) => ({
-      data: {
-        ...edge,
-        emitEvent: false,
-        emitCreateEvent: false,
-        emitDeleteEvent: true,
-      },
+      data: edge,
     })),
   }));
 
@@ -182,49 +177,61 @@ export class DrawerStore
     }
   }
 
-  async addNode(
-    nodeData: NodeDataDefinition,
-    options: {
-      emitEvent: boolean;
-      emitCreateEvent: boolean;
-      emitDeleteEvent: boolean;
-    }
-  ) {
+  async addNode(nodeData: NodeDataDefinition) {
     const drawer = await firstValueFrom(this.drawer$);
 
     if (drawer !== null) {
-      drawer.addNode(nodeData, options);
+      drawer.addNode(nodeData);
     }
   }
 
-  async addEdge(
-    edgeData: EdgeDataDefinition,
-    options: {
-      emitEvent: boolean;
-      emitCreateEvent: boolean;
-      emitDeleteEvent: boolean;
-    }
-  ) {
+  async handleNodeAdded(nodeData: NodeDataDefinition) {
     const drawer = await firstValueFrom(this.drawer$);
 
     if (drawer !== null) {
-      drawer.addEdge(edgeData, options);
+      drawer.handleNodeAdded(nodeData);
     }
   }
 
-  async removeNodeFromGraph(id: string, emitEvent = true) {
+  async handleNodeAddedToEdge({
+    node,
+    source,
+    target,
+    edgeId,
+  }: {
+    node: NodeDataDefinition;
+    source: string;
+    target: string;
+    edgeId: string;
+  }) {
     const drawer = await firstValueFrom(this.drawer$);
 
     if (drawer !== null) {
-      drawer.removeNodeFromGraph(id, { emitEvent });
+      drawer.handleNodeAddedToEdge(node, source, target, edgeId);
     }
   }
 
-  async removeEdgeFromGraph(id: string, emitEvent = true) {
+  async handleNodeRemoved(nodeId: string) {
     const drawer = await firstValueFrom(this.drawer$);
 
     if (drawer !== null) {
-      drawer.removeEdgeFromGraph(id, { emitEvent });
+      drawer.handleNodeRemoved(nodeId);
+    }
+  }
+
+  async handleEdgeAdded(edgeData: EdgeDataDefinition) {
+    const drawer = await firstValueFrom(this.drawer$);
+
+    if (drawer !== null) {
+      drawer.handleEdgeAdded(edgeData);
+    }
+  }
+
+  async handleEdgeRemoved(edgeId: string) {
+    const drawer = await firstValueFrom(this.drawer$);
+
+    if (drawer !== null) {
+      drawer.handleEdgeRemoved(edgeId);
     }
   }
 }
@@ -269,6 +276,8 @@ export class DrawerStore
 
         <button (click)="onOrganize()">Organize</button>
         <button (click)="onAddNode()">Add Node</button>
+
+        <p>{{ clientId }}</p>
       </div>
       <div id="cy" class="bp-bg-bricks" #drawerElement></div>
     </div>
@@ -323,29 +332,27 @@ export class AppComponent implements AfterViewInit {
             this.graphId,
             graph.lastEventId,
             (event) => {
+              console.log('server event', event);
+
               switch (event.type) {
                 case 'AddNodeSuccess': {
-                  this._drawerStore.addNode(event.payload, {
-                    emitEvent: false,
-                    emitCreateEvent: false,
-                    emitDeleteEvent: true,
-                  });
+                  this._drawerStore.handleNodeAdded(event.payload);
                   break;
                 }
                 case 'DeleteNodeSuccess': {
-                  this._drawerStore.removeNodeFromGraph(event.payload, false);
+                  this._drawerStore.handleNodeRemoved(event.payload);
                   break;
                 }
                 case 'AddEdgeSuccess': {
-                  this._drawerStore.addEdge(event.payload, {
-                    emitEvent: false,
-                    emitCreateEvent: false,
-                    emitDeleteEvent: true,
-                  });
+                  this._drawerStore.handleEdgeAdded(event.payload);
                   break;
                 }
                 case 'DeleteEdgeSuccess': {
-                  this._drawerStore.removeEdgeFromGraph(event.payload, false);
+                  this._drawerStore.handleEdgeRemoved(event.payload);
+                  break;
+                }
+                case 'AddNodeToEdgeSuccess': {
+                  this._drawerStore.handleNodeAddedToEdge(event.payload);
                   break;
                 }
               }
@@ -357,18 +364,15 @@ export class AppComponent implements AfterViewInit {
       this._drawerStore.event$
         .pipe(
           concatMap((event) => {
+            console.log('local event', event);
+
             switch (event.type) {
               // Ignoring these events for now
-              case 'AddNode':
-              case 'AddEdge':
-              case 'AddEdgePreview':
-              case 'AddNodeToEdge':
               case 'DeleteEdge':
               case 'DeleteNode':
               case 'Init':
               case 'ViewNode':
               case 'UpdateNode':
-              case 'RemoveEdgePreview':
                 return EMPTY;
               default: {
                 return this._eventApiService.emit(
@@ -397,18 +401,11 @@ export class AppComponent implements AfterViewInit {
   }
 
   onAddNode() {
-    this._drawerStore.addNode(
-      {
-        id: uuid(),
-        kind: 'faucet',
-        label: '',
-        image: 'url(assets/images/node.png)'
-      },
-      {
-        emitEvent: true,
-        emitCreateEvent: true,
-        emitDeleteEvent: true,
-      }
-    );
+    this._drawerStore.addNode({
+      id: uuid(),
+      kind: 'faucet',
+      label: '',
+      image: 'url(assets/images/node.png)'
+    });
   }
 }
