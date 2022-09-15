@@ -167,9 +167,8 @@ export const createGraph = (
           'text-margin-y': -5,
           'text-justification': 'left',
           'line-height': 1.3,
-          content: 'data(label)',
           'background-position-x': '0',
-          'background-image': 'data(image)',
+          'background-image': 'url(assets/images/node.png)',
           'color': 'white',
         },
       },
@@ -225,19 +224,19 @@ export const createGraph = (
       edges,
     },
   }).nodeHtmlLabel([{
-    query: '.l1',
-    tpl: function() {
+    query: '.bp-bd-node',
+    tpl: function(data: { label: string; kind: string; image:string }) {
         return `
         <div class="bd-custom-node">
           <div class="bd-custom-node-image" 
             style="
-                  --bd-bg-image: url('assets/images/create-nonce-account.png'); 
+                  --bd-bg-image: ` + data.image + `; 
                   --bd-bg-width: 55px;
                   "
           > </div>
           <div class="bd-custom-node-text">
-            <p>Token Program</p>
-            <h1>INIT ACCOUNT</h1>
+            <p> ` + data.kind + `</p>
+            <h1>` + data.label + `</h1>
           </div>
         </div>
         `;
@@ -283,7 +282,7 @@ export class Drawer {
     this._graph.on('server.node-added', (ev, ...extraParams) => {
       const node = extraParams[0] as cytoscape.NodeDataDefinition;
 
-      this._graph.add({ data: node, group: 'nodes' });
+      this._addNode(node);
     });
 
     this._graph.on('local.node-deleted', (_, ...extraParams) => {
@@ -379,6 +378,7 @@ export class Drawer {
         {
           data: node,
           group: 'nodes',
+          classes: 'bp-bd-node'
         },
         {
           group: 'edges',
@@ -396,6 +396,10 @@ export class Drawer {
         },
       ]);
     });
+  }
+
+  private _addNode(node: cytoscape.NodeDataDefinition) {
+    this._graph.add({ data: node, group: 'nodes', classes: 'bp-bd-node' });
   }
 
   setupNodeContextMenu() {
@@ -507,7 +511,7 @@ export class Drawer {
   }
 
   addNode(node: cytoscape.NodeDataDefinition) {
-    this._graph.add({ data: node, group: 'nodes' });
+    this._addNode(node);
     this._graph.emit('local.node-added', [node]);
   }
 
@@ -522,6 +526,7 @@ export class Drawer {
       {
         data: node,
         group: 'nodes',
+        classes: 'bp-bd-node'
       },
       {
         group: 'edges',
